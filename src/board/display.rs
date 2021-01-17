@@ -9,7 +9,7 @@ impl fmt::Display for Board {
             .rev()
             .map(|i| {
                 let m = 1u64 << i;
-                match (m & self.me, m & self.op) {
+                match (m & self.me.get(), m & self.op.get()) {
                     (0, 0) => Some(b'.'),
                     (_, 0) => Some(b'O'),
                     (0, _) => Some(b'X'),

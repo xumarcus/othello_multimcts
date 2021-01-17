@@ -3,9 +3,12 @@ mod fromstr;
 mod display;
 mod internals;
 
-#[derive(Debug, Copy, Clone)]
+use std::num::NonZeroU64;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Board {
-    me: u64,
-    op: u64,
     side: bool,
+    me: NonZeroU64,
+    op: NonZeroU64,
+    moves: NonZeroU64
 }
