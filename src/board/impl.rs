@@ -3,6 +3,13 @@ use crate::board::Board;
 use std::num::NonZeroU64;
 
 impl Board {
+    pub fn init() -> Board {
+        Board::new(
+            0x0000_0008_1000_0000,
+            0x0000_0010_0800_0000
+        ).unwrap()
+    }
+
     pub fn new(me: u64, op: u64) -> Option<Board> {
         Board::new_of(me, op, Default::default())
     }

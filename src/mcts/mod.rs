@@ -14,7 +14,7 @@ pub struct Node {
     nodes: Vec<Box<Node>>,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub struct NextMove {
     pub board: Board,
     pub mmask: NonZeroU64,

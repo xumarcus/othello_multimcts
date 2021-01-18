@@ -4,8 +4,8 @@ use crate::mcts::{Node, NextMove};
 use std::num::NonZeroU64;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 use std::thread;
-use std::time::{Duration, Instant};
 use rand::{Rng, SeedableRng};
 use rand::rngs::SmallRng;
 
@@ -19,54 +19,59 @@ type NextBoard = Result<bool, (NonZeroU64, Board)>;
 type RunResult = (bool, FromRun);
 
 #[allow(dead_code)]
-pub fn mcts_seq(board: Board, ms: u64) -> (usize, Vec<NextMove>) {
-    let mut root = Node::new(board);
-    let mut rng = SmallRng::from_entropy();
-    let mut cnt = 0;
-    let now = Instant::now(); 
-    while now.elapsed().as_millis() < (ms as u128) {
-        for _ in 0..100 {
-            let (res, path) = root.select(&mut rng);
-            let rr = run(res, &mut rng);
-            root.propagate(rr, path);
-            cnt += 1;
-        }   
-    }
-    (cnt, root.run())
+pub fn mcts_seq(board: Board, ms: u64) -> Option<(usize, Vec<NextMove>)> {
+    let timeup = Arc::new(AtomicBool::new(false));
+    let time_t = Arc::clone(&timeup);
+    let handle = thread::spawn(move || {
+        let mut root = Node::new(board);
+        let mut cnt = 0;
+        let mut rng = SmallRng::from_entropy();
+        while !time_t.load(Ordering::Acquire) {
+            for _ in 0..100 {
+                let (res, path) = root.select(&mut rng);
+                let rr = run(res, &mut rng);
+                root.propagate(rr, path);
+                cnt += 1;
+            }
+        }
+        (cnt, root.run())
+    });
+    thread::sleep(Duration::from_millis(ms));
+    timeup.store(true, Ordering::Release);
+    handle.join().ok()
 }
 
 #[allow(dead_code)]
-pub fn mcts_par(board: Board, ms: u64, pthread: usize) -> (usize, Vec<NextMove>) {
+pub fn mcts_par(board: Board, ms: u64, pthread: usize) -> Option<(usize, Vec<NextMove>)> {
     let timeup = Arc::new(AtomicBool::new(false));
     let root = Arc::new(Mutex::new(Node::new(board)));
     let mut handles = Vec::with_capacity(pthread);
     for _ in 0..pthread {
-        let timeup = Arc::clone(&timeup);
+        let time_t = Arc::clone(&timeup);
         let root = Arc::clone(&root);
         handles.push(thread::spawn(move || {
             let mut cnt = 0;
             let mut rng = SmallRng::from_entropy();
-            while !timeup.load(Ordering::Acquire) {
+            while !time_t.load(Ordering::Acquire) {
                 for _ in 0..100 {
-                    let (res, path) = root.lock().unwrap().select(&mut rng);
+                    let (res, path) = root.lock().ok()?.select(&mut rng);
                     let rr = run(res, &mut rng);
-                    root.lock().unwrap().propagate(rr, path);
+                    root.lock().ok()?.propagate(rr, path);
                     cnt += 1;
                 } 
             }
-            cnt
+            Some(cnt)
         }));
     }
     thread::sleep(Duration::from_millis(ms));
     timeup.store(true, Ordering::Release);
     let mut cnt = 0;
     for handle in handles {
-        cnt += handle.join().unwrap();
+        cnt += handle.join().ok().flatten()?;
     }
     Arc::try_unwrap(root).ok()
         .and_then(|mutex| mutex.into_inner().ok())
         .map(|root| (cnt, root.run()))
-        .unwrap()
 }
 
 impl Node {
