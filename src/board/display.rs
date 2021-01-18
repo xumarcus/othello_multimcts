@@ -1,32 +1,30 @@
 use crate::board::Board;
 
 use std::fmt;
-use std::str;
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ov: Option<Vec<u8>> = (0..64)
+        let me = self.me.get();
+        let op = self.op.get();
+        if let Some(ss) = (0..64)
             .rev()
-            .map(|i| {
-                let m = 1u64 << i;
-                match (m & self.me.get(), m & self.op.get()) {
-                    (0, 0) => Some(b'.'),
-                    (_, 0) => Some(b'O'),
-                    (0, _) => Some(b'X'),
-                    _ => None,
-                }
+            .map(|i| 1u64 << i)
+            .map(|m| match (m & me, m & op) {
+                (0, 0) => Some('⬜'),
+                (_, 0) => Some('⚪'),
+                (0, _) => Some('⚫'),
+                _ => None
             })
-            .collect();
-        match ov {
-            None => Err(fmt::Error),
-            Some(v) => {
-                let strs: Vec<&str> = v
-                    .chunks(8)
-                    .map(str::from_utf8)
-                    .map(Result::unwrap)
-                    .collect();
-                f.write_str(&strs.join("\n"))
-            }
+            .collect::<Option<Vec<_>>>()
+        {
+            f.write_str(ss
+                .chunks(8)
+                .map(|s| s.iter().collect::<String>())
+                .collect::<Vec<String>>()
+                .join("\n")
+                .as_str()
+            );
         }
+        Ok(())
     }
 }
