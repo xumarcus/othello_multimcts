@@ -10,50 +10,12 @@ use std::io;
 use std::num::NonZeroU64;
 use std::str::from_utf8;
 
-fn log2(m: NonZeroU64) -> u8 {
-    let mut m = m.get();
-    let mut n = 0;
-    while m != 1 {
-        m >>= 1;
-        n += 1;
-    }
-    n
-}
-
-fn read_board() -> Option<Board> {
-    println!("Board?");
-    let mut buf = String::new();
-    io::stdin().read_line(&mut buf).ok()?;
-    io::stdin().read_line(&mut buf).ok()?;
-    buf.parse::<Board>().ok()
-}
-
-fn read_move() -> Option<NonZeroU64> {
-    println!("Move?");
-    let mut buf = String::new();
-    io::stdin().read_line(&mut buf).ok()?;
-    if let [col, row] = buf.trim().as_bytes() {
-        if (b'a'..=b'h').contains(col)
-        && (b'1'..=b'8').contains(row) {
-            let n = (b'h' - col) + (b'8' - row) * 8;
-            return NonZeroU64::new(1u64 << n);
-        }
-    }
-    None
-}
-
 fn run_mcts(board: Board) -> Option<(usize, NextMove)> {
     mcts_seq(board, 2000)
     .and_then(|(cnt, moves)| {
         moves.iter().max()
         .map(|next_move| (cnt, next_move.clone()))
     })
-}
-
-fn print_move(m: NonZeroU64) {
-    let log2m = log2(m);
-    let bytes = [b'h' - log2m % 8, b'8' - log2m / 8];
-    println!("Move: [{}]", from_utf8(&bytes[..]).unwrap());
 }
 
 fn print_info((cnt,

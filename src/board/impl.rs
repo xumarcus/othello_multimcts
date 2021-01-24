@@ -7,19 +7,35 @@ impl Board {
         let me = 0x0000_0008_1000_0000;
         let op = 0x0000_0010_0800_0000;
         let moves = NonZeroU64::new(moves(me, op));
-        unsafe {
-            let me = NonZeroU64::new_unchecked(me);
-            let op = NonZeroU64::new_unchecked(op);
-            let side = Default::default();
-            Board { me, op, side, moves }
+        Board {
+            me: NonZeroU64::new(me),
+            op: NonZeroU64::new(op),
+            side: Default::default(),
+            moves
         }
     }
 
     fn make(me: u64, op: u64, side: bool) -> Option<Board> {
-        let moves = NonZeroU64::new(moves(me, op));
-        let me = NonZeroU64::new(me)?;
-        let op = NonZeroU64::new(op)?;
-        Some(Board { me, op, side, moves })
+        if me & op == 0 {
+            None
+        } else {
+            let board = Board {
+                me: NonZeroU64::new(me)?,
+                op: NonZeroU64::new(op)?,
+                side,
+                moves: NonZeroU64::new(moves(me, op))
+            };
+            Some(board)
+        }
+    }
+
+    unsafe fn make_unchecked(me: u64, op: u64, side: bool) -> Board {
+        Board {
+            me: NonZeroU64::new_unchecked(me),
+            op: NonZeroU64::new_unchecked(op),
+            side,
+            moves: NonZeroU64::new(moves(me, op))
+        }
     }
 
     pub fn side(&self) -> bool {
@@ -51,6 +67,25 @@ impl Board {
         Board::make(op, me, !self.side)
             .filter(|df| df.moves.is_some())
             .or_else(|| Board::make(me, op, self.side))
+    }
+
+    unsafe pub fn place_unchecked(&self, m: NonZeroU64) -> Board {
+        let me = self.me.get();
+        let op = self.op.get();
+        let m = m.get();
+        let c = Board::DIRS
+            .iter()
+            .map(|f| f(m, op))
+            .filter(|g| g & me != 0)
+            .fold(0, |a, x| a | x);
+        let me = me | (m | c);
+        let op = op & !c;
+        let df = Board::make_unchecked(op, me, !self.side);
+        if df.moves.is_some() {
+            df
+        } else {
+            Board::make_unchecked(me, op, self.side);
+        } 
     }
 }
 
