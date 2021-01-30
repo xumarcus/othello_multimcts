@@ -3,6 +3,4 @@ mod fromio;
 
 use crate::*;
 
-pub struct MoveIO {
-    pub m: NonZeroU64
-}
+pub struct MoveIO(pub Option<NonZeroU64>);

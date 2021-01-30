@@ -1,4 +1,5 @@
 use crate::*;
+use crate::MoveIO;
 
 use std::io::{Read, BufRead};
 
@@ -9,9 +10,10 @@ impl FromIO for MoveIO {
         match buf.trim().as_bytes() {
             [col@(b'a'..=b'h'), row@(b'1'..=b'8')] => {
                 let n = (b'h' - col) + (b'8' - row) * 8;
-                let m = 1u64 << (n as usize);
-                Some(MoveIO{ m: NonZeroU64::new(m)? })
+                let m = NonZeroU64::new(1u64 << (n as usize));
+                Some(MoveIO(m))
             },
+            [b'p', b'a'] => Some(MoveIO(None)),
             _ => None
         }
     }
