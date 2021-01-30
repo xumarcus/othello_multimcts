@@ -1,41 +1,17 @@
-use crate::board::Board;
-
-use std::num::NonZeroU64;
+use crate::*;
 
 impl Board {
     pub fn new() -> Board {
         let me = 0x0000_0008_1000_0000;
         let op = 0x0000_0010_0800_0000;
-        let moves = NonZeroU64::new(moves(me, op));
-        Board {
-            me: NonZeroU64::new(me),
-            op: NonZeroU64::new(op),
-            side: Default::default(),
-            moves
-        }
+        Board::make(me, op, bool::default()).unwrap()
     }
 
-    fn make(me: u64, op: u64, side: bool) -> Option<Board> {
-        if me & op == 0 {
-            None
-        } else {
-            let board = Board {
-                me: NonZeroU64::new(me)?,
-                op: NonZeroU64::new(op)?,
-                side,
-                moves: NonZeroU64::new(moves(me, op))
-            };
-            Some(board)
-        }
-    }
-
-    unsafe fn make_unchecked(me: u64, op: u64, side: bool) -> Board {
-        Board {
-            me: NonZeroU64::new_unchecked(me),
-            op: NonZeroU64::new_unchecked(op),
-            side,
+    pub fn make(me: u64, op: u64, side: bool) -> Option<Board> {
+        Some(Board {
+            me, op, side,
             moves: NonZeroU64::new(moves(me, op))
-        }
+        }).filter(|x| x.me & x.op == 0)
     }
 
     pub fn side(&self) -> bool {
@@ -47,45 +23,21 @@ impl Board {
     }
 
     pub fn loser(&self) -> bool {
-        let me = self.me.get();
-        let op = self.op.get();
-
-        self.side() ^ (me.count_ones() > op.count_ones())
+        self.side() ^ (self.me.count_ones() > self.op.count_ones())
     }
 
-    pub fn place(&self, m: Option<NonZeroU64>) -> Option<Board> {
-        let me = self.me.get();
-        let op = self.op.get();
-        let m = m.map(NonZeroU64::get)?;
+    // TODO
+    pub fn place(&self, m: NonZeroU64) -> Option<Board> {
         let c = Board::DIRS
             .iter()
-            .map(|f| f(m, op))
-            .filter(|g| g & me != 0)
+            .map(|f| f(m.get(), self.op))
+            .filter(|g| g & self.me != 0)
             .fold(0, |a, x| a | x);
-        let me = me | (m | c);
-        let op = op & !c;
+        let me = self.me | (m.get() | c);
+        let op = self.op & !c;
         Board::make(op, me, !self.side)
             .filter(|df| df.moves.is_some())
             .or_else(|| Board::make(me, op, self.side))
-    }
-
-    unsafe pub fn place_unchecked(&self, m: NonZeroU64) -> Board {
-        let me = self.me.get();
-        let op = self.op.get();
-        let m = m.get();
-        let c = Board::DIRS
-            .iter()
-            .map(|f| f(m, op))
-            .filter(|g| g & me != 0)
-            .fold(0, |a, x| a | x);
-        let me = me | (m | c);
-        let op = op & !c;
-        let df = Board::make_unchecked(op, me, !self.side);
-        if df.moves.is_some() {
-            df
-        } else {
-            Board::make_unchecked(me, op, self.side);
-        } 
     }
 }
 

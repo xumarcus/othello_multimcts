@@ -1,24 +1,46 @@
+use crate::*;
 use super::*;
 
-pub fn seq(board: Board, ms: u64) -> Option<(usize, Vec<NextMove>)> {
+use std::convert::identity;
+
+impl MCTSInfo {
+    fn new(cnt: usize, infos: Vec<NodeInfo>) -> Self {
+        MCTSInfo { cnt, infos }
+    }
+
+    pub fn best(&self, side: bool) -> Option<NonZeroU64> {
+        let info = self.infos.iter().max_by(|a, b| {
+            a.avg(side).partial_cmp(&b.avg(side)).unwrap()
+        });
+        info.and_then(|info| info.next_move)
+    }
+
+    pub fn cnt(&self) -> usize {
+        self.cnt
+    }
+}
+
+pub fn seq(board: Board, ms: u64) -> Option<MCTSInfo> {
     let timeup = Arc::new(AtomicBool::new(false));
     /*  simulation is executed sequentially
         no need to lock root with mutex */
     let handle = {
         let timeup = Arc::clone(&timeup);
         thread::spawn(move || {
-            let mut root = Node::new(board);
+            let mut root = Node::root(board);
             let mut cnt = 0;
             let mut rng = SmallRng::from_entropy();
             while !timeup.load(Ordering::Acquire) {
-                for _ in 0..100 {
-                    let (res, path) = root.select(&mut rng);
-                    let rr = run(res, &mut rng);
-                    root.propagate(rr, path);
+                for _ in 0..BLOCK_SIZE {
                     cnt += 1;
+                    let (rboard, path) = root
+                        .select().expand(&mut rng).consume();
+                    let loser = rboard.map_or_else(identity,
+                        |board| simulate(board, &mut rng));
+                    root.update(loser, path);
                 }
             }
-            (cnt, root.run())
+            MCTSInfo::new(cnt, root.consume())
         })
     };
     thread::sleep(Duration::from_millis(ms));
@@ -26,9 +48,9 @@ pub fn seq(board: Board, ms: u64) -> Option<(usize, Vec<NextMove>)> {
     handle.join().ok()
 }
 
-pub fn par(board: Board, ms: u64, pthread: usize) -> Option<(usize, Vec<NextMove>)> {
+pub fn par(board: Board, ms: u64, pthread: usize) -> Option<MCTSInfo> {
     let timeup = Arc::new(AtomicBool::new(false));
-    let root = Arc::new(Mutex::new(Node::new(board)));
+    let root = Arc::new(Mutex::new(Node::root(board)));
     let mut handles = Vec::with_capacity(pthread);
     for _ in 0..pthread {
         let timeup = Arc::clone(&timeup);
@@ -37,11 +59,13 @@ pub fn par(board: Board, ms: u64, pthread: usize) -> Option<(usize, Vec<NextMove
             let mut cnt = 0;
             let mut rng = SmallRng::from_entropy();
             while !timeup.load(Ordering::Acquire) {
-                for _ in 0..100 {
-                    let (res, path) = root.lock().ok()?.select(&mut rng);
-                    let rr = run(res, &mut rng);
-                    root.lock().ok()?.propagate(rr, path);
+                for _ in 0..BLOCK_SIZE {
                     cnt += 1;
+                    let (rboard, path) = root.lock().ok()?
+                        .select().expand(&mut rng).consume();
+                    let loser = rboard.map_or_else(identity,
+                        |board| simulate(board, &mut rng));
+                    root.lock().ok()?.update(loser, path);
                 } 
             }
             Some(cnt)
@@ -49,11 +73,12 @@ pub fn par(board: Board, ms: u64, pthread: usize) -> Option<(usize, Vec<NextMove
     }
     thread::sleep(Duration::from_millis(ms));
     timeup.store(true, Ordering::Release);
-    let mut cnt = 0;
-    for handle in handles {
-        cnt += handle.join().ok().flatten()?;
-    }
+    let cnt = handles.into_iter()
+        .map(|handle| handle.join().ok().flatten())
+        .collect::<Option<Vec<usize>>>()?
+        .into_iter()
+        .sum();
     Arc::try_unwrap(root).ok()
         .and_then(|mutex| mutex.into_inner().ok())
-        .map(|root| (cnt, root.run()))
+        .map(|root| MCTSInfo::new(cnt, root.consume()))
 }

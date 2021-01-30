@@ -1,18 +1,20 @@
 mod r#impl;
 
-use crate::Board;
-use crate::{Node, NodeInfo};
+use crate::*;
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use std::thread;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand::rngs::SmallRng;
 
+const BLOCK_SIZE: usize = 100;
+
+#[derive(Debug)]
 pub struct MCTSInfo {
-    pub infos: Vec<NodeInfo>,
-    pub cnt: usize,
+    cnt: usize,
+    infos: Vec<NodeInfo>
 }
 
 pub use r#impl::{seq, par};

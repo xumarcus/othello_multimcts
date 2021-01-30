@@ -24,6 +24,6 @@ impl FromStr for Board {
         let me = u64::from_str_radix(me, 16)?;
         let op = sp.next().ok_or(ParseBoardError::BadFormat)?;
         let op = u64::from_str_radix(op, 16)?;
-        Board::new(me, op).ok_or(ParseBoardError::BadSet)
+        Board::make(me, op, bool::default()).ok_or(ParseBoardError::BadSet)
     }
 }

@@ -5,10 +5,10 @@ mod internals;
 
 use std::num::NonZeroU64;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone)]
 pub struct Board {
-    me: NonZeroU64,
-    op: NonZeroU64,
+    me: u64,
+    op: u64,
     side: bool,
     moves: Option<NonZeroU64>
 }
