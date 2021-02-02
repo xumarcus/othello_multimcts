@@ -2,12 +2,8 @@ mod r#impl;
 
 use crate::*;
 
-#[derive(Debug, Copy, Clone)]
-pub enum AlgoType {
-	Random,
-	Roxanne,
-	Mobility,
-}
+use rand::Rng;
+use rand::seq::IteratorRandom;
 
 pub struct Algo<T: Rng> {
 	algo_type: AlgoType,

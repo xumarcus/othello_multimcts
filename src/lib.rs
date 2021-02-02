@@ -1,21 +1,19 @@
-pub mod algo;
+mod algo;
 mod board;
-mod board_move;
-mod mcts;
+mod enums;
 mod node;
-mod side;
 
-use std::cmp::Ordering;
-use rand::Rng;
-// Ordering::Less => Black loses
+use getset::Getters;
 
-use algo::*;
-use board::*;
-use node::*;
+#[macro_use]
+extern crate derivative;
+extern crate getset;
+extern crate strum_macros;
 
-pub use algo::AlgoType;
+pub use algo::Algo;
 pub use board::Board;
-pub use board_move::BoardMove;
-pub use mcts::MCTS;
-pub use node::Summary;
-pub use side::*;
+pub use board::moves::Moves;
+pub use enums::*;
+pub use node::*;
+
+type Winner = Option<enums::Side>;

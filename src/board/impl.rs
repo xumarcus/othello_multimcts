@@ -1,28 +1,12 @@
-use crate::*;
 use super::*;
 
+// TODO heuristic
 impl Board {
-    pub fn new(me: u64, op: u64, side: Side) -> Option<Board> {
-        if me & op != 0 {
-            return None;
-        }
-        let moves = BoardMove(Board::find_moves(me, op));
-        Some(Board { me, op, side, moves })
-    }
-
-    pub fn side(&self) -> Side {
-        self.side
-    }
-
-    pub fn moves(&self) -> BoardMove {
-        self.moves
-    }
-
-    pub fn ordering(&self) -> Ordering {
+    pub fn winner(&self) -> Winner {
         let ord = self.me.count_ones().cmp(&self.op.count_ones());
         match self.side {
-            Side::Black => ord,
-            Side::White => ord.reverse()
+            Side::Black => Side::from_ordering(ord),
+            Side::White => Side::from_ordering(ord.reverse())
         }
     }
 
@@ -31,16 +15,22 @@ impl Board {
     }
 
     pub fn potential_mobility(&self) -> u32 {
-        Board::potential_moves(self.me, self.op).count_ones()
+        internals::potential(self.me, self.op).count_ones()
     }
 
-    pub fn place(&self, m: BoardMove) -> Option<Board> {
-        let BoardMove(mu) = m;
-        let af = Board::affect(self.me, self.op, mu);
-        let me = self.me | mu | af;
+    pub fn place(&self, next_move: Moves) -> Board {
+        let Moves(mv) = next_move;
+        let af = internals::affect(self.me, self.op, mv);
+        println!("{:x} {:x} {:x} {:x}", af, self.me, self.op, mv);
+        let me = self.me | mv | af;
         let op = self.op & !af;
-        Board::new(op, me, !self.side)
-        .filter(|board| board.moves().0 != 0)
-        .or_else(|| Board::new(me, op, self.side))
+        assert_eq!(me & op, 0);
+        let moves = Moves(internals::moves(op, me));
+        if moves.is_nonzero() {
+            Board { op, me, side: !self.side, moves }
+        } else {
+            let moves = Moves(internals::moves(me, op));
+            Board { me, op, side: self.side, moves }
+        }
     }
 }

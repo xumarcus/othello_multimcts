@@ -1,10 +1,24 @@
-use crate::*;
 use super::*;
+
+use std::convert::identity;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering as AtomicOrdering;
+use std::time::Duration;
+use std::thread;
+use rand::SeedableRng;
+use rand::rngs::SmallRng;
 
 impl MCTS {
     const BLOCK_SIZE: usize = 100;
 
-    pub fn run(&self, board: Board) -> Option<Summary> {
+    pub fn new(timeout: u64, threads: usize
+        , epsilon: f32, algo_type: AlgoType) -> Self
+    {
+        Self { timeout, threads, epsilon, algo_type }
+    }
+
+    pub fn run(&self, board: Board) -> Option<Node> {
         if self.threads != 0 {
             self.par(board)
         } else {
@@ -16,7 +30,7 @@ impl MCTS {
         Algo::new(self.algo_type, self.epsilon, SmallRng::from_entropy())
     }
 
-    fn seq(&self, board: Board) -> Option<Summary> {
+    fn seq(&self, board: Board) -> Option<Node> {
         let timeup = Arc::new(AtomicBool::new(false));
         /*  simulation is executed sequentially
             no need to lock root with mutex */
@@ -27,24 +41,25 @@ impl MCTS {
                 let mut root = Node::root(board);
                 while !timeup.load(AtomicOrdering::Acquire) {
                     for _ in 0..MCTS::BLOCK_SIZE {
-                        let (rboard, path) = root
-                            .select()
-                            .expand()
-                            .consume();
+                        let mut path = Vec::new();
+                        let rboard = root
+                            .select(&mut path)
+                            .expand(&mut path)
+                            .get();
                         let ordering = rboard.map_or_else(identity,
                             |board| algo.simulate(board));
-                        root.update(ordering, path);
+                        root.update(ordering, &path);
                     }
                 }
-                root.summarize()
+                root.best()
             })
         };
         thread::sleep(Duration::from_millis(self.timeout));
         timeup.store(true, AtomicOrdering::Release);
-        handle.join().ok().flatten()
+        handle.join().ok()
     }
 
-    fn par(&self, board: Board) -> Option<Summary> {
+    fn par(&self, board: Board) -> Option<Node> {
         let timeup = Arc::new(AtomicBool::new(false));
         let root = Arc::new(Mutex::new(Node::root(board)));
         let mut handles = Vec::with_capacity(self.threads);
@@ -55,13 +70,14 @@ impl MCTS {
             handles.push(thread::spawn(move || {
                 while !timeup.load(AtomicOrdering::Acquire) {
                     for _ in 0..MCTS::BLOCK_SIZE {
-                        let (rboard, path) = root.lock().ok()?
-                            .select()
-                            .expand()
-                            .consume();
+                        let mut path = Vec::new();
+                        let rboard = root.lock().ok()?
+                            .select(&mut path)
+                            .expand(&mut path)
+                            .get();
                         let ordering = rboard.map_or_else(identity,
                             |board| algo.simulate(board));
-                        root.lock().ok()?.update(ordering, path);
+                        root.lock().ok()?.update(ordering, &path);
                     } 
                 }
                 Some(())
@@ -70,10 +86,10 @@ impl MCTS {
         thread::sleep(Duration::from_millis(self.timeout));
         timeup.store(true, AtomicOrdering::Release);
         for handle in handles {
-            handle.join().ok().flatten()?;
+            handle.join().ok()??;
         }
         Arc::try_unwrap(root).ok()
             .and_then(|mutex| mutex.into_inner().ok())
-            .and_then(Node::summarize)
+            .map(Node::best)
     }
 }

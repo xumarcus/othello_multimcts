@@ -1,4 +1,3 @@
-use crate::*;
 use super::*;
 
 const ROXANNE: [u64; 5] = [
@@ -9,69 +8,44 @@ const ROXANNE: [u64; 5] = [
     0x42c300000000c342,
 ];
 
-impl Default for AlgoType {
-	fn default() -> Self {
-		AlgoType::Random
-	}
-}
-
 impl<T: Rng> Algo<T> {
 	pub fn new(algo_type: AlgoType, epsilon: f32, rng: T) -> Self {
 		Algo { algo_type, epsilon, rng }
 	}
 
-	pub fn next_move(&mut self, board: Board) -> BoardMove {
-		let moves = board.moves();
+	pub fn next_move(&mut self, board: Board) -> Moves {
+		let moves = *board.moves();
 		match self.algo_type {
 			AlgoType::Random => self.random_move(moves),
 			AlgoType::Roxanne => {
 				if self.epsilon_test() {
 					self.random_move(moves)
 				} else {
-					let BoardMove(m) = moves;
-					for mask in ROXANNE.iter() {
-						let x = mask & m;
-						if x != 0 {
-							return self.random_move(BoardMove(x));
-						}
-					}
-					panic!()
+					ROXANNE.iter()
+					.map(|mask| Moves(mask & moves.0))
+					.find(Moves::is_nonzero)
+					.unwrap()
 				}
 			},
 			AlgoType::Mobility => {
 				if self.epsilon_test() {
 					self.random_move(moves)
 				} else {
-					// TODO make BoardMove iterable
-					let BoardMove(mut x) = moves;
-					let mut y = 0;
-					let mut max_m = 0;
-					while x != 0 {
-						let z = x & (!x + 1);
-						x -= z;
-						let next_move = BoardMove(y);
-						let new_b = board.place(next_move)
-							.expect("Chosen from valid");
-						let mobil = new_b.actual_mobility()
-							+ new_b.potential_mobility();
-						if mobil > max_m {
-							max_m = mobil;
-							y = z;
-						}
-					}
-					BoardMove(y)
+					moves.max_by_key(|next_move| {
+						let new_b = board.place(*next_move);
+						new_b.actual_mobility() + new_b.potential_mobility()
+					}).unwrap()
 				}
 			}
 		}
 	}
 
-	pub fn simulate(&mut self, board: Board) -> Ordering {
+	pub fn simulate(&mut self, board: Board) -> Winner {
 		let mut t = board;
-		while t.moves().0 != 0 {
-			t = t.place(self.next_move(t))
-				.expect("Chosen from valid");
+		while t.moves().is_nonzero() {
+			t = t.place(self.next_move(t));
 		}
-		t.ordering()
+		t.winner()
 	}
 
 	#[inline]
@@ -80,13 +54,9 @@ impl<T: Rng> Algo<T> {
 	}
 
 	#[inline]
-	fn random_move(&mut self, board_move: BoardMove) -> BoardMove {
-		let BoardMove(mut m) = board_move;
-		let r = self.rng.gen_range(0..m.count_ones());
-		for _ in 0..r {
-			m &= m - 1;
-		}
-		BoardMove(m & (!m + 1))
+	fn random_move(&mut self, moves: Moves) -> Moves {
+		debug_assert!(moves.is_nonzero());
+		moves.choose(&mut self.rng).unwrap()
 	}
 }
 

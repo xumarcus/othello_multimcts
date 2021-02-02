@@ -1,192 +1,153 @@
-use crate::*;
 use super::*;
 
-impl NodeInner {
-    fn new(moves: BoardMove) -> Self {
-        NodeInner {
-            w: 0,
-            l: 0,
-            n: 0,
-            moves,
-            okays: !(u64::MAX.wrapping_shl(moves.0.count_ones())),
-            proof: None
-        }
-    }
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct NodeInfo {
+    parent_side: Side,
+    moves: Moves,
+    okays: u64,
+    w: usize,
+    l: usize,
+    proof: Option<Winner>,
 }
 
 impl NodeInfo {
-    fn new(board: Board, parent_side: Side, next_move: BoardMove) -> Self {
-        let inner = match board.moves() {
-            BoardMove(0) => Err(board.ordering()),
-            moves        => Ok(NodeInner::new(moves))
-        };
-        NodeInfo { board, parent_side, next_move, inner }
+    fn new(parent_side: Side, moves: Moves) -> Self {
+        let okays = !(u64::MAX.wrapping_shl(moves.0.count_ones()));
+        Self { parent_side, moves, okays, ..Self::default() }
     }
 
-    fn avg(&self) -> f32 {
-        match self.inner.as_ref() {
-            Ok(inner) => match inner.w + inner.l {
-                0 => 0.5,
-                t => (inner.w as f32) / (t as f32)
-            },
-            Err(ordering) => match self.parent_side {
-                Side::Black => match ordering {
-                    Ordering::Less => 0.0,
-                    Ordering::Equal => 0.5,
-                    Ordering::Greater => 1.0
-                },
-                Side::White => match ordering {
-                    Ordering::Less => 1.0,
-                    Ordering::Equal => 0.5,
-                    Ordering::Greater => 0.0
-                }
+    #[inline]
+    fn update(&mut self, winner: Winner) {
+        if let Some(winner) = winner {
+            if self.parent_side == winner {
+                self.w += 1;
+            } else {
+                self.l += 1;
             }
         }
     }
 
-    fn uct(&self, lognum: f32) -> f32 {
-        self.inner.as_ref().map_or(0.0, |inner| {
-            f32::sqrt(2.0 * lognum / (inner.n as f32))
-        })
-    }
-
-    fn update(&mut self, ordering: Ordering) {
-        let inner = self.inner.as_mut().unwrap();
-        match self.parent_side {
-            Side::Black => match ordering {
-                Ordering::Less => inner.l += 1,
-                Ordering::Greater => inner.w += 1,
-                _ => ()
-            },
-            Side::White => match ordering {
-                Ordering::Less => inner.w += 1,
-                Ordering::Greater => inner.l += 1,
-                _ => ()
+    fn update_proof(&mut self, index: usize, proof: Winner) {
+        let mask = 1u64 << index;
+        if self.okays & mask != 0 {
+            self.okays -= mask;
+            if let Some(pf) = self.proof {
+                let white_should_update = match (pf, proof) {
+                    (Some(Side::Black), _) => true,
+                    (_, Some(Side::Black)) => false,
+                    (Some(Side::White), _) => false,
+                    (_, Some(Side::White)) => true,
+                    _ => false
+                };
+                if white_should_update == (self.parent_side == Side::Black) {
+                    return;
+                }
             }
+            self.proof = Some(proof);
         }
     }
 }
 
 impl Node {
     pub fn root(board: Board) -> Self {
-        Node::new(NodeInfo::new(board, board.side(), BoardMove(0)))
-    }
-    
-    pub fn select(&mut self) -> Zipper {
-        let mut node = self;
-        let mut path = Vec::new();
-        while let Ok(inner) = node.info.inner.as_mut() {
-            inner.n += 1;
-            if inner.moves.0 != 0 {
-                break;
-            }
-            let lognum = f32::ln(inner.n as f32);
-            let idx = node.nodes.iter()
-                .enumerate()
-                .max_by(|(_, a), (_, b)| {
-                    a.val(lognum).partial_cmp(&b.val(lognum))
-                    .expect("Is not NaN")
-                })
-                .map(|p| p.0)
-                .expect("At least one node in Vec exists");
-            path.push(idx);
-            node = &mut node.nodes[idx];
-        }
-        Zipper { node, path }
+        Node::new(*board.side(), board, Moves(0))
     }
 
-    pub fn summarize(self) -> Option<Summary> {
-        self.nodes.iter()
-        .map(|node| node.info)
-        .max_by(|a, b| {
-            a.avg().partial_cmp(&b.avg()).expect("Is not NaN")
-        })
-        .map(|info| Summary {
-            count: self.info.inner.map_or(0, |inner| inner.n),
-            score: info.avg(),
-            board: info.board,
-            next_move: info.next_move
-        })
-    }
-
-    pub fn update(&mut self, ordering: Ordering, path: Vec<usize>) {
-        if self.info.inner.is_ok() {
-            self.info.update(ordering);
-        } else {
-            return; // Nothing to do
-        }
-        let mut v = Vec::new();
-        let mut node = &mut *self;
-        for index in path {
-            v.push((index, &mut node.info));
-            node = &mut node.nodes[index];
-            if let Err(ord) = node.info.inner {
-                for (index, info) in v.iter_mut().rev() {
-                    let mask = 1u64 << *index;
-                    let inner = info.inner.as_mut()
-                        .expect("Loop return on Err");
-                    if inner.okays & mask != 0 {
-                        inner.okays -= mask;
-                        let was = inner.proof.get_or_insert(ord);
-                        match info.parent_side {
-                            Side::Black => *was = max(*was, ord),
-                            Side::White => *was = min(*was, ord)
-                        }
-                    }
-                    if inner.okays != 0 {
-                        break;
-                    } else {
-                        info.inner = Err(ord);
-                    }
-                }
-                break;
-            } else {
-                node.info.update(ordering);
-            }
-        }
-    }
-
-    fn new(info: NodeInfo) -> Self {
-        Node { nodes: Vec::new(), info }
-    }
-
-    fn val(&self, lognum: f32) -> f32 {
-        self.info.avg() + self.info.uct(lognum)
-    }
-}
-
-impl<'a> Zipper<'a> {
-    // Lifetime conflict if nodes altered between expansion and consumption
-    // Therefore return new Zipper
-    pub fn expand(self) -> Zipper<'a> {
-        let board = &self.node.info.board;
-        if let Ok(inner) = &mut self.node.info.inner {
-            let m = &mut inner.moves.0;
-            if *m != 0 {
-                let x = *m & (!(*m) + 1);
-                *m -= x;
-                let next_move = BoardMove(x);
-                let new_b = board.place(next_move).unwrap();
-                let new_i = NodeInfo::new(new_b, board.side(), next_move);
-                let nodes = &mut self.node.nodes;
-                let mut path = self.path.to_owned();
-                path.push(nodes.len());
-                nodes.push(Node::new(new_i));
-                let node = nodes.last_mut().unwrap();
-                return Zipper { node, path };
+    pub fn select(&mut self, path: &mut Vec<usize>) -> &mut Node {
+        self.n += 1;
+        if let Ok(info) = self.info.as_mut() {
+            if !info.moves.is_nonzero() {
+                let lognum = f32::ln(self.n as f32);
+                debug_assert!(!lognum.is_nan());
+                let index = self.nodes.iter()
+                    .enumerate()
+                    .max_by_key(|(_, node)| node.val(lognum))
+                    .map(|(i, _)| i)
+                    .expect("At least one node");
+                path.push(index);
+                return self.nodes[index].select(path);
             }
         }
         self
     }
 
-    // Rust has no BiMap :(
-    pub fn consume(self) -> (Res<Board>, Vec<usize>) {
-        let info = &self.node.info;
-        let res = match info.inner.as_ref() {
-            Err(&ordering) => Err(ordering),
-            Ok(_) => Ok(info.board)
+    pub fn expand(&mut self, path: &mut Vec<usize>) -> &mut Node {
+        if let Ok(info) = self.info.as_mut() {
+            let mut moves_t = info.moves;
+            if let Some(next_move) = moves_t.next() {
+                info.moves.0 -= next_move.0;
+                let index = self.add_child(next_move);
+                path.push(index);
+                return &mut self.nodes[index];
+            }
+        }
+        self
+    }
+
+    pub fn update(&mut self, winner: Winner, path: &[usize]) -> Option<Winner> {
+        match self.info.as_mut() {
+            Err(proof) => return Some(*proof),
+            Ok(info) => {
+                info.update(winner);
+                let (index, tail) = path.split_first()?;
+                let proof = self.nodes[*index].update(winner, tail)?;
+                info.update_proof(*index, proof);
+            }
         };
-        (res, self.path.to_owned())
+        let proof: Winner = self.info.ok().filter(|info| info.okays == 0)?.proof?;
+        self.info = Err(proof);
+        Some(proof)
+    }
+
+    pub fn best(mut self) -> Self {
+        let nodes = mem::take(&mut self.nodes);
+        nodes.into_iter()
+        .max_by_key(Node::avg)
+        .unwrap_or(self)
+    }
+
+    pub fn avg(&self) -> R32 {
+        let avg = match self.info.as_ref() {
+            Ok(info) => match info.w + info.l {
+                0 => 0.5,
+                t => (info.w as f32) / (t as f32)
+            },
+            Err(winner) => winner.map_or(0.5, |side| {
+                match side == self.parent_side {
+                    true => 1.0,
+                    _ => 0.0
+                }
+            })
+        };
+        r32(avg)
+    }
+
+    pub fn get(&self) -> Result<Board, Winner> {
+        self.info?;
+        Ok(self.board)
+    }
+
+    fn add_child(&mut self, next_move: Moves) -> usize {
+        let index = self.nodes.len();
+        self.nodes.push(Node::new(*self.board.side(), self.board, next_move));
+        index
+    }
+
+    fn new(parent_side: Side, board: Board, next_move: Moves) -> Self {
+        let board = match next_move {
+            Moves(0) => board,
+            next_move => board.place(next_move)
+        };
+        let info = match board.moves() {
+            Moves(0) => Err(board.winner()),
+            moves => Ok(NodeInfo::new(parent_side, *moves))
+        };
+        Node { nodes: Vec::new(), parent_side, info, n: 0, board, next_move }
+    }
+
+    fn val(&self, lognum: f32) -> R32 {
+        let uct = f32::sqrt(2.0 * lognum / (self.n as f32));
+        self.avg() + r32(uct)
     }
 }
 

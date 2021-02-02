@@ -1,0 +1,58 @@
+use super::*;
+
+pub fn app() -> App<'static> {
+	App::new("Othello-MultiMCTS")
+        .version(env!("CARGO_PKG_VERSION"))
+        .author("Marcus Xu <xumarcus.sg@gmail.com>")
+        .about("Multithreaded MCTS-based Othello AI")
+        .long_about("These AI options are supported:\n\
+                    [none]: from stdin (recommend log-level at least interact)\n\
+                    [random]: simulate moves randomly without heuristic\n\
+                    [roxanne]: p=0.88±0.11 against [random]\n\
+                    See Archer, R. (2007). Analysis of Monte Carlo Techniques in Othello.")
+        .arg(Arg::new("timeout")
+            .short('t')
+            .long("timeout")
+            .default_value("1000")
+            .about("Set how long the AI should run"))
+        .arg(Arg::new("threads")
+            .short('p')
+            .long("threads")
+            .default_value("0")
+            .about("Run multithreaded with x number of threads")
+            .long_about("This feature is experimental. Implementing WU-UCT for parallelism. \
+                        Speedup depends on target architecture and algorithm chosen. \
+                        Generally, slower simulation benefit more from more threads."))
+        .arg(Arg::new("epsilon")
+            .short('e')
+            .long("epsilon")
+            .default_value("0.05")
+            .about("Set parameter for epsilon-greedy simulation"))
+        .arg(Arg::new("log-level")
+            .short('l')
+            .alias("log")
+            .long("log-level")
+            .default_value("info")
+            .possible_values(&LogLevel::VARIANTS)
+            .about("Set logging level"))
+        .arg(Arg::new("from-sequence")
+            .short('s')
+            .alias("sequence")
+            .long("from-sequence")
+            .takes_value(true)
+            .about("Start game from sequence of moves"))
+        .arg(Arg::new("black-player")
+            .short('b')
+            .alias("black")
+            .long("black-player")
+            .takes_value(true)
+            .possible_values(&AlgoType::VARIANTS)
+            .about("Set AI for Black."))
+        .arg(Arg::new("white-player")
+            .short('w')
+            .alias("white")
+            .long("white-player")
+            .takes_value(true)
+            .possible_values(&AlgoType::VARIANTS)
+            .about("Set AI for White."))
+}

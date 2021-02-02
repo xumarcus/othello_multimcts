@@ -1,8 +1,6 @@
-use crate::*;
+use super::*;
 
-use std::fmt;
-
-impl fmt::Display for BoardMove {
+impl fmt::Display for Moves {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
             0 => write!(f, "pa"),

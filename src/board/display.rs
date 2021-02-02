@@ -1,6 +1,4 @@
-use crate::*;
-
-use std::fmt;
+use super::*;
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -24,18 +22,5 @@ impl fmt::Display for Board {
             writeln!(f, "{} {}", i + 1, s)?;
         }
         Ok(())
-    }
-}
-
-impl fmt::Display for ParseBoardError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseBoardError::InvalidMove(board_move) => {
-                write!(f, "InvalidMove: [{}]", board_move)
-            },
-            ParseBoardError::InvalidFormat => {
-                write!(f, "InvalidFormat")
-            }
-        }
     }
 }
