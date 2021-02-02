@@ -1,15 +1,21 @@
+pub mod algo;
 mod board;
+mod board_move;
 mod mcts;
-mod move_io;
 mod node;
+mod side;
 
-use std::num::NonZeroU64;
+use std::cmp::Ordering;
+use rand::Rng;
+// Ordering::Less => Black loses
 
-pub trait FromIO where Self: Sized {
-    fn from_io<R: std::io::Read + std::io::BufRead>(r: &mut R) -> Option<Self>;
-}
+use algo::*;
+use board::*;
+use node::*;
 
+pub use algo::AlgoType;
 pub use board::Board;
-pub use mcts::{seq, par, MCTSInfo};
-pub use move_io::MoveIO;
-pub use node::{Node, NodeInfo, simulate};
+pub use board_move::BoardMove;
+pub use mcts::MCTS;
+pub use node::Summary;
+pub use side::*;

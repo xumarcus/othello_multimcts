@@ -1,75 +1,46 @@
 use crate::*;
+use super::*;
 
 impl Board {
-    pub fn new() -> Board {
-        let me = 0x0000_0008_1000_0000;
-        let op = 0x0000_0010_0800_0000;
-        Board::make(me, op, bool::default()).unwrap()
+    pub fn new(me: u64, op: u64, side: Side) -> Option<Board> {
+        if me & op != 0 {
+            return None;
+        }
+        let moves = BoardMove(Board::find_moves(me, op));
+        Some(Board { me, op, side, moves })
     }
 
-    pub fn make(me: u64, op: u64, side: bool) -> Option<Board> {
-        Some(Board {
-            me, op, side,
-            moves: NonZeroU64::new(moves(me, op))
-        }).filter(|x| x.me & x.op == 0)
-    }
-
-    pub fn side(&self) -> bool {
+    pub fn side(&self) -> Side {
         self.side
     }
 
-    pub fn moves(&self) -> Option<NonZeroU64> {
+    pub fn moves(&self) -> BoardMove {
         self.moves
     }
 
-    pub fn loser(&self) -> bool {
-        self.side() ^ (self.me.count_ones() > self.op.count_ones())
+    pub fn ordering(&self) -> Ordering {
+        let ord = self.me.count_ones().cmp(&self.op.count_ones());
+        match self.side {
+            Side::Black => ord,
+            Side::White => ord.reverse()
+        }
     }
 
-    // TODO
-    pub fn place(&self, m: NonZeroU64) -> Option<Board> {
-        let c = Board::DIRS
-            .iter()
-            .map(|f| f(m.get(), self.op))
-            .filter(|g| g & self.me != 0)
-            .fold(0, |a, x| a | x);
-        let me = self.me | (m.get() | c);
-        let op = self.op & !c;
-        Board::make(op, me, !self.side)
-            .filter(|df| df.moves.is_some())
-            .or_else(|| Board::make(me, op, self.side))
-    }
-}
-
-fn moves(me: u64, op: u64) -> u64 {
-    Board::DIRS
-        .iter()
-        .map(|f| f(me, op))
-        .fold(0, |a, x| a | x)
-        & !(me | op)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_easy() {
-        assert_eq!(moves(
-            0x0000000020040000,
-            0x00007f1c1c100000
-        ),
-            0x0044000002000800
-        );
+    pub fn actual_mobility(&self) -> u32 {
+        self.moves.0.count_ones()
     }
 
-    #[test]
-    fn test_hard() {
-        assert_eq!(moves(
-            0x0000f80006140800,
-            0x8844073c38202440,
-        ),
-            0x6601004040480224
-        ); 
+    pub fn potential_mobility(&self) -> u32 {
+        Board::potential_moves(self.me, self.op).count_ones()
+    }
+
+    pub fn place(&self, m: BoardMove) -> Option<Board> {
+        let BoardMove(mu) = m;
+        let af = Board::affect(self.me, self.op, mu);
+        let me = self.me | mu | af;
+        let op = self.op & !af;
+        Board::new(op, me, !self.side)
+        .filter(|board| board.moves().0 != 0)
+        .or_else(|| Board::new(me, op, self.side))
     }
 }

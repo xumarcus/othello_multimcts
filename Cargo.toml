@@ -10,5 +10,15 @@ edition = "2018"
 version = "0.8.2"
 features = ["small_rng"]
 
+[dependencies.clap]
+version = "3.0.0-beta.2"
+
 [profile.release]
-debug = true
+# For profiling
+# debug = true
+
+# Link-time optimization
+lto = "fat"
+
+# Optimize across chunks
+codegen-units = 1

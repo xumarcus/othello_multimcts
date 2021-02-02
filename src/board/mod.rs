@@ -1,14 +1,21 @@
 mod r#impl;
-mod fromstr;
+mod default;
 mod display;
+mod fromstr;
 mod internals;
 
-use std::num::NonZeroU64;
+use crate::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Board {
     me: u64,
     op: u64,
-    side: bool,
-    moves: Option<NonZeroU64>
+    side: Side,
+    moves: BoardMove
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ParseBoardError {
+    InvalidMove(BoardMove),
+    InvalidFormat
 }
