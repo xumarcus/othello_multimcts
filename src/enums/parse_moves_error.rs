@@ -1,13 +1,14 @@
 use super::*;
 
-#[derive(Clone, Copy, Debug, Derivative, Display, EnumString, PartialEq, Eq)]
+impl error::Error for ParseMovesError {}
+
+#[derive(Clone, Copy, Debug, Derivative, Display, PartialEq, Eq)]
 #[derivative(Default)]
 pub enum ParseMovesError {
     #[derivative(Default)]
 	NotAscii,
 	InvalidLength(usize),
 	InvalidColumn,
-	InvalidRow
+	InvalidRow,
+    NotPlaceable(Moves)
 }
-
-impl error::Error for ParseMovesError {}

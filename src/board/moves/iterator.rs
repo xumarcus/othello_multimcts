@@ -11,9 +11,10 @@ impl Iterator for Moves {
 		self.0 -= x;
 		Some(Moves(x))
 	}
+}
 
-	fn size_hint(&self) -> (usize, Option<usize>) {
-		let n = self.0.count_ones() as usize;
-		(n, Some(n))
-	}
+impl ExactSizeIterator for Moves {
+    fn len(&self) -> usize {
+        self.0.count_ones() as usize
+    }
 }

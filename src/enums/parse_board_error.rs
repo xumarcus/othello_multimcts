@@ -1,12 +1,11 @@
 use super::*;
 
+impl error::Error for ParseBoardError {}
+
 #[derive(Clone, Copy, Debug, Derivative, Display, EnumString, PartialEq, Eq)]
 #[derivative(Default)]
 pub enum ParseBoardError {
     #[derivative(Default)]
-	InvalidFormat(ParseMovesError),
-	InvalidMove(Moves),
+	InvalidMove(ParseMovesError),
 	InvalidLength(usize),
 }
-
-impl error::Error for ParseBoardError {}

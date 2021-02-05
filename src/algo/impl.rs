@@ -21,20 +21,32 @@ impl<T: Rng> Algo<T> {
 				if self.epsilon_test() {
 					self.random_move(moves)
 				} else {
-					ROXANNE.iter()
-					.map(|mask| Moves(mask & moves.0))
-					.find(Moves::is_nonzero)
-					.unwrap()
+					self.random_move(ROXANNE.iter()
+                        .map(|mask| Moves(mask & moves.0))
+                        .find(Moves::is_nonzero)
+                        .expect("Masks entirely cover")
+                    )
 				}
 			},
 			AlgoType::Mobility => {
 				if self.epsilon_test() {
 					self.random_move(moves)
 				} else {
-					moves.max_by_key(|next_move| {
-						let new_b = board.place(*next_move);
-						new_b.actual_mobility() + new_b.potential_mobility()
-					}).unwrap()
+                    // Imperative cuz of early return
+                    let mut max_v = 0;
+                    let mut max_m = Moves(0);
+                    for next_move in moves {
+                        let new_b = board.place(next_move);
+                        if new_b.side() == board.side() {
+                            return next_move;
+                        }
+                        let mobil = new_b.a_mobil_op() + new_b.p_mobil_op();
+                        if mobil >= max_v {
+                            max_v = mobil;
+                            max_m = next_move;
+                        }
+                    }
+                    max_m
 				}
 			}
 		}
@@ -43,7 +55,7 @@ impl<T: Rng> Algo<T> {
 	pub fn simulate(&mut self, board: Board) -> Winner {
 		let mut t = board;
 		while t.moves().is_nonzero() {
-			t = t.place(self.next_move(t));
+			t.place_mut(self.next_move(t));
 		}
 		t.winner()
 	}
@@ -55,7 +67,6 @@ impl<T: Rng> Algo<T> {
 
 	#[inline]
 	fn random_move(&mut self, moves: Moves) -> Moves {
-		debug_assert!(moves.is_nonzero());
 		moves.choose(&mut self.rng).unwrap()
 	}
 }

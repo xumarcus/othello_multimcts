@@ -6,10 +6,13 @@ use std::mem;
 
 use noisy_float::types::{r32, R32};
 
-#[derive(Clone, Debug, Getters)]
+#[derive(Clone, Debug, Derivative, Getters)]
+#[derivative(Default)]
 pub struct Node {
     nodes: Vec<Node>,
     parent_side: Side,
+
+    #[derivative(Default(value="Ok(Default::default())"))]
     info: Result<r#impl::NodeInfo, Winner>,
 
     #[getset(get = "pub")]

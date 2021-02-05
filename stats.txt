@@ -1,0 +1,17 @@
+(N=30, t=1000)
+Mobility(p=6) vs Roxanne(p=6): 9/20
+Roxanne(p=6) vs Mobility(p=6): 17/13
+Random(p=3) vs Mobility(p=3): 2/27
+Mobility(p=3) vs Random(p=3): 27/3
+
+(N=100, t=200)
+Mobility(p=3) vs Roxanne(p=3): 37/60 (0.38 +- 0.10)
+
+(N=10, t=1000)
+Random(Naive) vs Random: 0/10
+-- snip --
+Roxanne(Naive) vs Random: 1/9
+Roxanne(Naive) vs Roxanne: 0/10
+Roxanne(Naive) vs Mobility(p=6): 0/10
+
+Mobility(Naive) vs Random: 0/10

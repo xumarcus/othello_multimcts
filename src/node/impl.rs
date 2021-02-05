@@ -63,7 +63,7 @@ impl Node {
                     .enumerate()
                     .max_by_key(|(_, node)| node.val(lognum))
                     .map(|(i, _)| i)
-                    .expect("At least one node");
+                    .expect("At least one node"); // TODO
                 path.push(index);
                 return self.nodes[index].select(path);
             }
@@ -73,9 +73,8 @@ impl Node {
 
     pub fn expand(&mut self, path: &mut Vec<usize>) -> &mut Node {
         if let Ok(info) = self.info.as_mut() {
-            let mut moves_t = info.moves;
-            if let Some(next_move) = moves_t.next() {
-                info.moves.0 -= next_move.0;
+            // next(&mut self) modifies info.moves
+            if let Some(next_move) = info.moves.next() {
                 let index = self.add_child(next_move);
                 path.push(index);
                 return &mut self.nodes[index];
@@ -99,11 +98,25 @@ impl Node {
         Some(proof)
     }
 
-    pub fn best(mut self) -> Self {
-        let nodes = mem::take(&mut self.nodes);
-        nodes.into_iter()
+    pub fn place(&mut self, next_move: Moves) {
+        if let Some(node) = mem::take(&mut self.nodes)
+            .into_iter()
+            .find(|node| node.next_move == next_move)
+        {
+            *self = node;
+        }
+    }
+
+    pub fn place_best(&mut self) -> usize {
+        mem::take(&mut self.nodes)
+        .into_iter()
         .max_by_key(Node::avg)
-        .unwrap_or(self)
+        .map(|best| {
+            let n = self.n;
+            *self = best;
+            n
+        })
+        .unwrap_or_default()
     }
 
     pub fn avg(&self) -> R32 {
