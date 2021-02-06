@@ -14,4 +14,4 @@ for online [Demo](https://xumarcus.github.io/othello_multimcts)
 # Note:
 * Generally MCTS performs better when branching factor is large
 * However there is no simple admissible heuristic for Othello
-* Alpha-beta based ones like [NTest] (https://github.com/weltyc/ntest) perform better
+* Alpha-beta based ones like [NTest](https://github.com/weltyc/ntest) perform better
