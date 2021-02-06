@@ -1,28 +1,18 @@
 [package]
 name = "othello_multimcts"
-version = "0.0.5"
+version = "0.1.0"
 authors = ["xumarcus <xumarcus.sg@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-clap = "3.0.0-beta.2"
 derivative = "^2.2.0"
 getset = "^0.1.0"
-log = "^0.4"
 noisy_float = "^0.1.13"
-rand = { version = "^0.8", features = ["small_rng"] }
-stderrlog = "^0.5.1"
+rand = "^0.8"
 strum = "^0.20"
 strum_macros = "^0.20"
 
+# Optimizations
 [profile.release]
-# For profiling
-# debug = true
-
-# Link-time optimization
 lto = "fat"
-
-# Optimize across chunks
 codegen-units = 1

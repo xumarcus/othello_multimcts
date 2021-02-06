@@ -46,4 +46,8 @@ impl Board {
         }
         Some(self.place(next_move))
     }
+
+    pub unsafe fn make(me: u64, op: u64, side: Side) -> Self {
+        Self { me, op, side, moves: Moves(internals::moves(me, op)) } 
+    }
 }

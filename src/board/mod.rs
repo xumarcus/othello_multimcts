@@ -16,9 +16,11 @@ use std::str::FromStr;
 pub struct Board {
 
 	#[derivative(Default(value = "0x0000_0008_1000_0000"))]
+    #[getset(get = "pub with_prefix")] // wasm_bindgen
     me: u64,
 
     #[derivative(Default(value = "0x0000_0010_0800_0000"))]
+    #[getset(get = "pub with_prefix")] // wasm_bindgen
     op: u64,
 
     #[getset(get = "pub")]

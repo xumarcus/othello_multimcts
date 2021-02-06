@@ -49,8 +49,8 @@ impl NodeInfo {
 }
 
 impl Node {
-    pub fn root(board: Board) -> Self {
-        Node::new(*board.side(), board, Moves(0))
+    pub fn new(board: Board) -> Self {
+        Node::make(*board.side(), board, Moves(0))
     }
 
     pub fn place(&mut self, next_move: Moves) {
@@ -137,11 +137,11 @@ impl Node {
 
     fn add_child(&mut self, next_move: Moves) -> usize {
         let index = self.nodes.len();
-        self.nodes.push(Node::new(*self.board.side(), self.board, next_move));
+        self.nodes.push(Node::make(*self.board.side(), self.board, next_move));
         index
     }
 
-    fn new(parent_side: Side, board: Board, next_move: Moves) -> Self {
+    fn make(parent_side: Side, board: Board, next_move: Moves) -> Self {
         let board = match next_move {
             Moves(0) => board,
             next_move => board.place(next_move)

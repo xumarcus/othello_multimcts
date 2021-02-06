@@ -1,0 +1,21 @@
+[package]
+name = "othello_multimcts_cli"
+version = "0.1.0"
+authors = ["xumarcus <xumarcus.sg@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+othello_multimcts = { version = "^0.1", path = "../" }
+clap = "3.0.0-beta.2"
+derivative = "^2.2.0"
+log = "^0.4"
+rand = { version = "^0.8", features = ["small_rng"] }
+    # Faster than thread_rng
+strum = "^0.20"
+stderrlog = "^0.5.1"
+
+# Optimizations
+[profile.release]
+lto = "fat"
+codegen-units = 1
+# debug = true

@@ -1,1 +1,7 @@
 /target
+/cli/target
+/wasm/pkg
+/wasm/target
+/wasm/www/build
+/wasm/www/node_modules
+/wasm/www/public
