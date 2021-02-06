@@ -1,0 +1,25 @@
+{
+  "files": {
+    "main.css": "/othello_multimcts/static/css/main.f4f6858d.chunk.css",
+    "main.js": "/othello_multimcts/static/js/main.3efd6112.chunk.js",
+    "main.js.map": "/othello_multimcts/static/js/main.3efd6112.chunk.js.map",
+    "runtime-main.js": "/othello_multimcts/static/js/runtime-main.06c9d95d.js",
+    "runtime-main.js.map": "/othello_multimcts/static/js/runtime-main.06c9d95d.js.map",
+    "static/js/2.cd0a96e0.chunk.js": "/othello_multimcts/static/js/2.cd0a96e0.chunk.js",
+    "static/js/2.cd0a96e0.chunk.js.map": "/othello_multimcts/static/js/2.cd0a96e0.chunk.js.map",
+    "static/js/3.bd00aa46.chunk.js": "/othello_multimcts/static/js/3.bd00aa46.chunk.js",
+    "77f56b58b377d1147578.module.wasm": "/othello_multimcts/77f56b58b377d1147578.module.wasm",
+    "static/js/3.bd00aa46.chunk.js.map": "/othello_multimcts/static/js/3.bd00aa46.chunk.js.map",
+    "static/js/4.6b083271.chunk.js": "/othello_multimcts/static/js/4.6b083271.chunk.js",
+    "static/js/4.6b083271.chunk.js.map": "/othello_multimcts/static/js/4.6b083271.chunk.js.map",
+    "index.html": "/othello_multimcts/index.html",
+    "static/css/main.f4f6858d.chunk.css.map": "/othello_multimcts/static/css/main.f4f6858d.chunk.css.map",
+    "static/js/2.cd0a96e0.chunk.js.LICENSE.txt": "/othello_multimcts/static/js/2.cd0a96e0.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.06c9d95d.js",
+    "static/js/2.cd0a96e0.chunk.js",
+    "static/css/main.f4f6858d.chunk.css",
+    "static/js/main.3efd6112.chunk.js"
+  ]
+}
