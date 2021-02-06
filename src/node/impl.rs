@@ -53,51 +53,6 @@ impl Node {
         Node::new(*board.side(), board, Moves(0))
     }
 
-    pub fn select(&mut self, path: &mut Vec<usize>) -> &mut Node {
-        self.n += 1;
-        if let Ok(info) = self.info.as_mut() {
-            if !info.moves.is_nonzero() {
-                let lognum = f32::ln(self.n as f32);
-                debug_assert!(!lognum.is_nan());
-                let index = self.nodes.iter()
-                    .enumerate()
-                    .max_by_key(|(_, node)| node.val(lognum))
-                    .map(|(i, _)| i)
-                    .expect("At least one node"); // TODO
-                path.push(index);
-                return self.nodes[index].select(path);
-            }
-        }
-        self
-    }
-
-    pub fn expand(&mut self, path: &mut Vec<usize>) -> &mut Node {
-        if let Ok(info) = self.info.as_mut() {
-            // next(&mut self) modifies info.moves
-            if let Some(next_move) = info.moves.next() {
-                let index = self.add_child(next_move);
-                path.push(index);
-                return &mut self.nodes[index];
-            }
-        }
-        self
-    }
-
-    pub fn update(&mut self, winner: Winner, path: &[usize]) -> Option<Winner> {
-        match self.info.as_mut() {
-            Err(proof) => return Some(*proof),
-            Ok(info) => {
-                info.update(winner);
-                let (index, tail) = path.split_first()?;
-                let proof = self.nodes[*index].update(winner, tail)?;
-                info.update_proof(*index, proof);
-            }
-        };
-        let proof: Winner = self.info.ok().filter(|info| info.okays == 0)?.proof?;
-        self.info = Err(proof);
-        Some(proof)
-    }
-
     pub fn place(&mut self, next_move: Moves) {
         if let Some(node) = mem::take(&mut self.nodes)
             .into_iter()
@@ -135,9 +90,49 @@ impl Node {
         r32(avg)
     }
 
-    pub fn get(&self) -> Result<Board, Winner> {
-        self.info?;
-        Ok(self.board)
+    fn select(&mut self, path: &mut Vec<usize>) -> &mut Node {
+        self.n += 1;
+        if let Ok(info) = self.info.as_mut() {
+            if !info.moves.is_nonzero() {
+                let lognum = f32::ln(self.n as f32);
+                debug_assert!(!lognum.is_nan());
+                let index = self.nodes.iter()
+                    .enumerate()
+                    .max_by_key(|(_, node)| node.val(lognum))
+                    .map(|(i, _)| i)
+                    .expect("At least one node"); // TODO
+                path.push(index);
+                return self.nodes[index].select(path);
+            }
+        }
+        self
+    }
+
+    fn expand(&mut self, path: &mut Vec<usize>) -> &mut Node {
+        if let Ok(info) = self.info.as_mut() {
+            // next(&mut self) modifies info.moves
+            if let Some(next_move) = info.moves.next() {
+                let index = self.add_child(next_move);
+                path.push(index);
+                return &mut self.nodes[index];
+            }
+        }
+        self
+    }
+
+    fn update(&mut self, winner: Winner, path: &[usize]) -> Option<Winner> {
+        match self.info.as_mut() {
+            Err(proof) => return Some(*proof),
+            Ok(info) => {
+                info.update(winner);
+                let (index, tail) = path.split_first()?;
+                let proof = self.nodes[*index].update(winner, tail)?;
+                info.update_proof(*index, proof);
+            }
+        };
+        let proof: Winner = self.info.ok().filter(|info| info.okays == 0)?.proof?;
+        self.info = Err(proof);
+        Some(proof)
     }
 
     fn add_child(&mut self, next_move: Moves) -> usize {
@@ -161,6 +156,29 @@ impl Node {
     fn val(&self, lognum: f32) -> R32 {
         let uct = f32::sqrt(2.0 * lognum / (self.n as f32));
         self.avg() + r32(uct)
+    }
+}
+
+impl MCTSRunner {
+    pub fn new(root: &mut Node) -> Self {
+        let mut path = Vec::new();
+        let node = root
+            .select(&mut path)
+            .expand(&mut path);
+        let board = node.info
+            .map(|_| node.board);
+        Self { board, path }
+    }
+
+    pub fn run_sim<T: Rng>(mut self, algo: &mut Algo<T>) -> Self {
+        if let Ok(board) = self.board {
+            self.board = Err(algo.simulate(board));
+        }
+        self
+    }
+
+    pub fn run_update(&self, root: &mut Node) {
+        root.update(self.board.unwrap_err(), self.path.as_slice());
     }
 }
 

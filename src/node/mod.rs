@@ -24,3 +24,9 @@ pub struct Node {
     #[getset(get = "pub")]
     next_move: Moves,
 }
+
+#[derive(Debug)]
+pub struct MCTSRunner {
+    board: Result<Board, Winner>,
+    path: Vec<usize>
+}

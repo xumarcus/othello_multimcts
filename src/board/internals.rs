@@ -27,6 +27,7 @@ const NOT_A: u64 = 0x7f7f7f7f7f7f7f7f;
 const NOT_H: u64 = 0xfefefefefefefefe;
 
 #[inline]
+#[allow(clippy::many_single_char_names)]
 pub fn moves(me: u64, op: u64) -> u64 {
     let a = noea(me, op);
     let b = nort(me, op);
@@ -40,6 +41,7 @@ pub fn moves(me: u64, op: u64) -> u64 {
 }
 
 #[inline]
+#[allow(clippy::many_single_char_names)]
 pub fn affect(me: u64, op: u64, m: u64) -> u64 {
     let a = noea(m, op);
     let b = nort(m, op);

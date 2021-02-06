@@ -13,7 +13,7 @@ impl FromStr for Board {
             .map_err(ParseBoardError::InvalidMove))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter();
-        let board = Board::from_iter(&mut moves_it);
+        let board = (&mut moves_it).collect::<Board>();
         if let Some(err_move) = moves_it.next() {
             let err = ParseMovesError::NotPlaceable(err_move);
             return Err(ParseBoardError::InvalidMove(err));

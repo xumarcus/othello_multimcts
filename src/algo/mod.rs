@@ -2,7 +2,6 @@ mod r#impl;
 
 use crate::*;
 
-use rand::Rng;
 use rand::seq::IteratorRandom;
 
 pub struct Algo<T: Rng> {

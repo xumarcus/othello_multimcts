@@ -4,6 +4,7 @@ mod enums;
 mod node;
 
 use getset::Getters;
+use rand::Rng;
 
 #[macro_use]
 extern crate derivative;
