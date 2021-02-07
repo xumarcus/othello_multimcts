@@ -85,8 +85,8 @@ impl MCTS {
             handles.push(thread::spawn(move || {
                 while !timeup.load(AtomicOrdering::Acquire) {
                     for _ in 0..MCTS::BLOCK_SIZE {
-                        MCTSRunner::new(&mut root.lock().unwrap())
-                            .run_sim(&mut algo)
+                        let runner = MCTSRunner::new(&mut root.lock().unwrap());
+                        runner.run_sim(&mut algo)
                             .run_update(&mut root.lock().unwrap());
                     } 
                 }
